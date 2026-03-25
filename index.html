@@ -61,7 +61,7 @@
             padding: 12px 30px; margin-top: 5px; color: #00FF00;
         }
 
-        .debug-line { font-size: 18px; color: #007700; margin-top: 5px; transition: color 0.3s; }
+        .debug-line { font-size: 18px; color: #007700; margin-top: 5px; transition: color 0.3s; text-align: right; margin-right: 5%; }
         #debug-container { margin-top: 15px; }
 
         #timer { font-size: 34px; font-weight: bold; white-space: nowrap; }
@@ -83,8 +83,9 @@
     <div class="section-title">מלחמה:</div>
     <div id="holon-status">חולון: אין התרעות</div>
     <div id="debug-container">
-        <div id="debug-alarms" class="debug-line">אזעקה אחרונה: טוען... | אזעקות ביממה: 0 | עודכן: --:--:--</div>
-        <div id="debug-pushes" class="debug-line">התרעה אחרונה: טוען... | התרעות ביממה: 0 | עודכן: --:--:--</div>
+        <div id="debug-alarms" class="debug-line"></div>
+        <div id="debug-pushes" class="debug-line"></div>
+        <div id="debug-diag" class="debug-line" style="font-size: 14px; text-align: center; margin: 5px 0 0 0;">אבחון רשת: מתחבר...</div>
     </div>
 
     <div class="separator"></div>
@@ -134,196 +135,115 @@
 
         function checkHolonAlert() {
             var nowTime = new Date().getTime();
-            
             if (isFetchingAlerts) {
-                if (nowTime - lockTime > 20000) {
-                    isFetchingAlerts = false;
-                } else {
-                    return; 
-                }
+                if (nowTime - lockTime > 20000) { isFetchingAlerts = false; } else { return; }
             }
-            
-            isFetchingAlerts = true;
-            lockTime = nowTime;
-
+            isFetchingAlerts = true; lockTime = nowTime;
             var targetUrl = "https://script.google.com/macros/s/AKfycbz_2w4SkUX2qxP27pVCX4g-tsZbtttKb5X95TGG4FBRcFihafSjQBDDkYQKfXOPraXQjA/exec";
             var fetchUrl = targetUrl + "?v=" + lockTime;
-            
-            fetch(fetchUrl)
-                .then(function(response) {
-                    if (!response.ok) throw new Error("HTTP Status: " + response.status);
-                    return response.text();
-                })
-                .then(function(rawText) {
-                    isFetchingAlerts = false; 
-                    var now = new Date();
-                    
-                    var alertsData = [];
-                    var pushesData = [];
-                    
-                    if (rawText !== "" && rawText.indexOf("<") !== 0) {
-                        try {
-                            var parsedData = JSON.parse(rawText);
-                            if (Array.isArray(parsedData)) {
-                                alertsData = parsedData; 
-                            } else {
-                                alertsData = parsedData.alerts || [];
-                                pushesData = parsedData.pushes || [];
+            fetch(fetchUrl).then(function(response) {
+                if (!response.ok) throw new Error("HTTP Status: " + response.status);
+                return response.text();
+            }).then(function(rawText) {
+                isFetchingAlerts = false; var now = new Date(); var diagDiv = document.getElementById("debug-diag");
+                var alertsData = []; var pushesData = [];
+                if (rawText !== "" && rawText.indexOf("<") !== 0) {
+                    try {
+                        var parsedData = JSON.parse(rawText);
+                        if (Array.isArray(parsedData)) { alertsData = parsedData; diagDiv.innerHTML = "אבחון: מצב מיושן. עדכן סקריפט גוגל."; }
+                        else { alertsData = parsedData.alerts || []; pushesData = parsedData.pushes || []; diagDiv.innerHTML = "אבחון: פועל. אזהרות: " + alertsData.length + ", צפי: " + pushesData.length; }
+                    } catch(e) { diagDiv.innerHTML = "אבחון: שגיאת פענוח JSON מגוגל."; }
+                } else { diagDiv.innerHTML = "אבחון: תשובה ריקה מגוגל."; }
+                lastSuccessTime = now.getTime();
+                
+                var extractTimeObj = function(str) {
+                    var isoMatch = str.match(/"time"\s*:\s*"([^"]+)"/);
+                    if (isoMatch && isoMatch[1].indexOf('T') !== -1) { var d = new Date(isoMatch[1]); if (!isNaN(d.getTime())) return d; }
+                    var fMatch = str.match(/(\d{4}-\d{2}-\d{2})[T\s]([0-2]\d:[0-5]\d:[0-5]\d)/);
+                    if (fMatch) { var dp = fMatch[1].split("-"), tp = fMatch[2].split(":"); return new Date(dp[0], dp[1]-1, dp[2], tp[0], tp[1], tp[2]); }
+                    var nMatch = str.match(/"(?:time|date|alertDate)"\s*:\s*(17\d{8,11})/i);
+                    if (nMatch) { var ts = parseInt(nMatch[1]); return new Date(ts > 9999999999 ? ts : ts * 1000); }
+                    var tMatch = str.match(/([0-2]\d):([0-5]\d):([0-5]\d)/);
+                    if (tMatch) { var d2 = new Date(); d2.setHours(parseInt(tMatch[1]), parseInt(tMatch[2]), parseInt(tMatch[3]), 0); return d2; }
+                    return null;
+                };
+
+                var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+                var timeNowStr = now.toLocaleTimeString("he-IL");
+
+                // --- לוגיקת אזעקות אמת ---
+                var latestAlarmTimeStr = "שקט בחולון", alarmsToday = 0, isAlarmActive = false, alarmAgeMinutes = -1;
+                for (var j = 0; j < alertsData.length; j++) {
+                    var rowA = JSON.stringify(alertsData[j] || {});
+                    if (rowA.indexOf("חולון") !== -1) {
+                        var dObjA = extractTimeObj(rowA);
+                        if (dObjA) {
+                            if (dObjA.getTime() >= startOfDay) alarmsToday++;
+                            if (dObjA.getTime() > 0) {
+                                var hA = dObjA.getHours(), mA = dObjA.getMinutes(), sA = dObjA.getSeconds();
+                                var curAStr = (hA < 10 ? "0"+hA : hA) + ":" + (mA < 10 ? "0"+mA : mA) + ":" + (sA < 10 ? "0"+sA : sA);
+                                if (latestAlarmTimeStr === "שקט בחולון" || curAStr > latestAlarmTimeStr) latestAlarmTimeStr = curAStr;
                             }
-                        } catch(e) {}
+                            var diffA = (now.getTime() - dObjA.getTime()) / 60000;
+                            if (diffA < -1000) diffA += 1440;
+                            if (diffA <= 10 && diffA >= 0) { isAlarmActive = true; if (alarmAgeMinutes === -1 || diffA < alarmAgeMinutes) alarmAgeMinutes = diffA; }
+                        }
                     }
-                    
-                    lastSuccessTime = now.getTime();
-                    
-                    var extractTimeObj = function(str) {
-                        var isoMatch = str.match(/"time"\s*:\s*"([^"]+)"/);
-                        if (isoMatch && isoMatch[1].indexOf('T') !== -1) {
-                            var d = new Date(isoMatch[1]);
-                            if (!isNaN(d.getTime())) return d;
-                        }
-                        var fMatch = str.match(/(\d{4}-\d{2}-\d{2})[T\s]([0-2]\d:[0-5]\d:[0-5]\d)/);
-                        if (fMatch) {
-                            var dp = fMatch[1].split("-");
-                            var tp = fMatch[2].split(":");
-                            return new Date(dp[0], dp[1]-1, dp[2], tp[0], tp[1], tp[2]);
-                        }
-                        var nMatch = str.match(/"(?:time|date|alertDate)"\s*:\s*(17\d{8,11})/i);
-                        if (nMatch) {
-                            var ts = parseInt(nMatch[1]);
-                            return new Date(ts > 9999999999 ? ts : ts * 1000);
-                        }
-                        var tMatch = str.match(/([0-2]\d):([0-5]\d):([0-5]\d)/);
-                        if (tMatch) {
-                            var d2 = new Date();
-                            d2.setHours(parseInt(tMatch[1]), parseInt(tMatch[2]), parseInt(tMatch[3]), 0);
-                            return d2;
-                        }
-                        return null;
-                    };
+                }
 
-                    var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
-                    var timeNowStr = now.toLocaleTimeString("he-IL");
-
-                    // --- לוגיקת אזעקות אמת ---
-                    var latestAlarmTime = 0;
-                    var latestAlarmTimeStr = "שקט בחולון";
-                    var alarmsToday = 0; 
-                    var isAlarmActive = false;
-                    var alarmAgeMinutes = -1;
-
-                    for (var j = 0; j < alertsData.length; j++) {
-                        var rowA = JSON.stringify(alertsData[j] || {});
-                        if (rowA.indexOf("חולון") !== -1) {
-                            var dObjA = extractTimeObj(rowA);
-                            if (dObjA) {
-                                var tsA = dObjA.getTime();
-                                if (tsA >= startOfDay) alarmsToday++;
-                                if (tsA > latestAlarmTime) {
-                                    latestAlarmTime = tsA;
-                                    var hA = dObjA.getHours(), mA = dObjA.getMinutes(), sA = dObjA.getSeconds();
-                                    latestAlarmTimeStr = (hA < 10 ? "0"+hA : hA) + ":" + (mA < 10 ? "0"+mA : mA) + ":" + (sA < 10 ? "0"+sA : sA);
-                                }
-                                var diffA = (now.getTime() - tsA) / 60000;
-                                if (diffA < -1000) diffA += 1440;
-                                if (diffA <= 10 && diffA >= 0) {
-                                    isAlarmActive = true;
-                                    if (alarmAgeMinutes === -1 || diffA < alarmAgeMinutes) alarmAgeMinutes = diffA;
-                                }
+                // --- לוגיקת התרעות צפי ---
+                var latestPushTimeStr = "שקט בחולון", pushesToday = 0, isPushActive = false, pushAgeMinutes = -1;
+                for (var k = 0; k < pushesData.length; k++) {
+                    var rowP = JSON.stringify(pushesData[k] || {});
+                    if (rowP.indexOf("חולון") !== -1) {
+                        var dObjP = extractTimeObj(rowP);
+                        if (dObjP) {
+                            if (dObjP.getTime() >= startOfDay) pushesToday++;
+                            if (dObjP.getTime() > 0) {
+                                var hP = dObjP.getHours(), mP = dObjP.getMinutes(), sP = dObjP.getSeconds();
+                                var curPStr = (hP < 10 ? "0"+hP : hP) + ":" + (mP < 10 ? "0"+mP : mP) + ":" + (sP < 10 ? "0"+sP : sP);
+                                if (latestPushTimeStr === "שקט בחולון" || curPStr > latestPushTimeStr) latestPushTimeStr = curPStr;
                             }
+                            var diffP = (now.getTime() - dObjP.getTime()) / 60000;
+                            if (diffP < -1000) diffP += 1440;
+                            if (diffP <= 10 && diffP >= 0) { isPushActive = true; if (pushAgeMinutes === -1 || diffP < pushAgeMinutes) pushAgeMinutes = diffP; }
                         }
                     }
+                }
 
-                    // --- לוגיקת התרעות צפי ---
-                    var latestPushTime = 0;
-                    var latestPushTimeStr = "שקט בחולון";
-                    var pushesToday = 0;
-                    var isPushActive = false;
-                    var pushAgeMinutes = -1;
+                // --- יישור ועיצוב דינמי של שורות הנתונים ---
+                var padStr = function(str, len) { while (str.length < len) str += " "; return str; };
+                var alarmRowTitle = "אזעקה אחרונה: "; var pushRowTitle = "התרעה אחרונה: ";
+                var maxTitleLen = Math.max(alarmRowTitle.length, pushRowTitle.length);
+                var sep = " | ";
 
-                    for (var k = 0; k < pushesData.length; k++) {
-                        var rowP = JSON.stringify(pushesData[k] || {});
-                        if (rowP.indexOf("חולון") !== -1) {
-                            var dObjP = extractTimeObj(rowP);
-                            if (dObjP) {
-                                var tsP = dObjP.getTime();
-                                if (tsP >= startOfDay) pushesToday++;
-                                if (tsP > latestPushTime) {
-                                    latestPushTime = tsP;
-                                    var hP = dObjP.getHours(), mP = dObjP.getMinutes(), sP = dObjP.getSeconds();
-                                    latestPushTimeStr = (hP < 10 ? "0"+hP : hP) + ":" + (mP < 10 ? "0"+mP : mP) + ":" + (sP < 10 ? "0"+sP : sP);
-                                }
-                                var diffP = (now.getTime() - tsP) / 60000;
-                                if (diffP < -1000) diffP += 1440;
-                                if (diffP <= 10 && diffP >= 0) {
-                                    isPushActive = true;
-                                    if (pushAgeMinutes === -1 || diffP < pushAgeMinutes) pushAgeMinutes = diffP;
-                                }
-                            }
-                        }
-                    }
+                document.getElementById("debug-alarms").innerHTML = padStr(alarmRowTitle, maxTitleLen) + latestAlarmTimeStr + sep + "אזעקות ביממה: " + padStr(alarmsToday.toString(), 2) + sep + "עודכן: " + timeNowStr;
+                document.getElementById("debug-pushes").innerHTML = padStr(pushRowTitle, maxTitleLen) + latestPushTimeStr + sep + "התרעות ביממה: " + padStr(pushesToday.toString(), 2) + sep + "עודכן: " + timeNowStr;
 
-                    // עדכון שורות המידע במסך
-                    document.getElementById("debug-alarms").innerHTML = "אזעקה אחרונה: " + latestAlarmTimeStr + " | אזעקות ביממה: " + alarmsToday + " | עודכן: " + timeNowStr;
-                    document.getElementById("debug-pushes").innerHTML = "התרעה אחרונה: " + latestPushTimeStr + " | התרעות ביממה: " + pushesToday + " | עודכן: " + timeNowStr;
-
-                    // היררכיית מצבים וויזואליים
-                    var statusDiv = document.getElementById("holon-status");
-                    
-                    if (isAlarmActive) {
-                        // עדיפות 1: אזעקת אמת (אדום)
-                        statusDiv.innerHTML = "אזעקה בחולון!";
-                        if (alarmAgeMinutes <= 2) {
-                            document.body.className = "emergency";
-                        } else {
-                            document.body.className = "shrapnel-alert";
-                        }
-                    } else if (isPushActive) {
-                        // עדיפות 2: התרעת צפי (כתום)
-                        statusDiv.innerHTML = "חולון: צפי לאזעקה";
-                        if (pushAgeMinutes <= 1) {
-                            document.body.className = "warning-flicker";
-                        } else {
-                            document.body.className = "warning-static";
-                        }
-                    } else {
-                        // שגרה (ירוק)
-                        document.body.className = "";
-                        statusDiv.innerHTML = "חולון: אין התרעות";
-                    }
-                })
-                .catch(function(error) {
-                    isFetchingAlerts = false;
-                });
+                // --- היררכיית מצבים וויזואליים ---
+                var statusDiv = document.getElementById("holon-status");
+                if (isAlarmActive) { statusDiv.innerHTML = "אזעקה בחולון!"; if (alarmAgeMinutes <= 2) document.body.className = "emergency"; else document.body.className = "shrapnel-alert"; }
+                else if (isPushActive) { statusDiv.innerHTML = "חולון: צפי לאזעקה"; if (pushAgeMinutes <= 1) document.body.className = "warning-flicker"; else document.body.className = "warning-static"; }
+                else { document.body.className = ""; statusDiv.innerHTML = "חולון: אין התרעות"; }
+            }).catch(function(error) { isFetchingAlerts = false; document.getElementById("debug-diag").innerHTML = "אבחון: שגיאת תקשורת רשת (" + error.message + ")."; });
         }
 
         function checkConnectionHealth() {
-            var now = new Date().getTime();
-            var diffSeconds = (now - lastSuccessTime) / 1000;
-            var c1 = document.getElementById("debug-alarms");
-            var c2 = document.getElementById("debug-pushes");
-            var color = (diffSeconds > 35) ? "#ff7700" : "#007700";
-            if (c1) c1.style.color = color;
-            if (c2) c2.style.color = color;
+            var now = new Date().getTime(); var diffSeconds = (now - lastSuccessTime) / 1000; var diagDiv = document.getElementById("debug-diag");
+            if (diagDiv) {
+                if (diffSeconds > 35) { diagDiv.style.color = "#ff7700"; diagDiv.innerHTML = "אבחון: אין נתונים מגוגל כ-35 שניות."; }
+                else if (diagDiv.innerHTML.indexOf("פועל") !== -1) { diagDiv.style.color = "#007700"; }
+            }
         }
 
         function updateCountdown() {
-            var target = new Date(2026, 3, 1, 0, 0, 0); 
-            var diff = target - new Date();
+            var target = new Date(2026, 3, 1, 0, 0, 0); var diff = target - new Date();
             if (diff <= 0) { document.getElementById("timer").innerHTML = "מזל טוב!"; return; }
-            var d = Math.floor(diff / 86400000);
-            var h = Math.floor((diff % 86400000) / 3600000);
-            var m = Math.floor((diff % 3600000) / 60000);
-            var s = Math.floor((diff % 60000) / 1000);
-            
+            var d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
             document.getElementById("timer").innerHTML = d + " ימים " + h + " שעות " + m + " דקות " + s + " שניות ";
         }
 
-        setInterval(updateClock, 1000);
-        setInterval(updateCountdown, 1000);
-        setInterval(checkHolonAlert, 15000); 
-        setInterval(checkConnectionHealth, 2000); 
-        setInterval(updateWeather, 900000);
-        
+        setInterval(updateClock, 1000); setInterval(updateCountdown, 1000); setInterval(checkHolonAlert, 15000); setInterval(checkConnectionHealth, 2000); setInterval(updateWeather, 900000);
         updateClock(); updateCountdown(); updateWeather(); checkHolonAlert();
     </script>
 </body>
