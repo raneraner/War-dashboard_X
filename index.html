@@ -25,7 +25,6 @@
             -webkit-animation: flicker 0.15s infinite;
         }
 
-        /* מחלקות חירום - אדום (אזעקה) */
         body.emergency { -webkit-animation: redAlert 0.4s infinite !important; }
         body.emergency #holon-status { 
             border-color: #ffffff; color: #ffffff; background-color: #ff0000;
@@ -36,7 +35,6 @@
             font-weight: bold; font-size: 45px;
         }
 
-        /* מחלקות חירום - כתום (צפי) */
         body.warning-flicker { -webkit-animation: orangeAlert 0.6s infinite !important; }
         body.warning-flicker #holon-status { 
             border-color: #ffffff; color: #ffffff; background-color: #ff7700;
@@ -61,8 +59,12 @@
             padding: 12px 30px; margin-top: 5px; color: #00FF00;
         }
 
-        .debug-line { font-size: 18px; color: #007700; margin-top: 5px; transition: color 0.3s; text-align: right; margin-right: 5%; }
-        #debug-container { margin-top: 15px; }
+        #debug-table { width: 90%; margin: 15px auto 0 auto; font-size: 18px; color: #007700; border-collapse: collapse; direction: rtl; }
+        #debug-table td { padding: 4px; transition: color 0.3s; }
+        .col-right { text-align: right; width: 33%; }
+        .col-center { text-align: center; width: 34%; }
+        .col-left { text-align: left; width: 33%; }
+        .col-sep { text-align: center; width: 2%; color: #004400; }
 
         #timer { font-size: 34px; font-weight: bold; white-space: nowrap; }
     </style>
@@ -82,11 +84,23 @@
 
     <div class="section-title">מלחמה:</div>
     <div id="holon-status">חולון: אין התרעות</div>
-    <div id="debug-container">
-        <div id="debug-alarms" class="debug-line"></div>
-        <div id="debug-pushes" class="debug-line"></div>
-        <div id="debug-diag" class="debug-line" style="font-size: 14px; text-align: center; margin: 5px 0 0 0;">אבחון רשת: מתחבר...</div>
-    </div>
+    
+    <table id="debug-table">
+        <tr>
+            <td class="col-right">אזעקה אחרונה: <span id="val-alarm-last">טוען...</span></td>
+            <td class="col-sep">|</td>
+            <td class="col-center">אזעקות ביממה: <span id="val-alarm-count">0</span></td>
+            <td class="col-sep">|</td>
+            <td class="col-left">עודכן: <span id="val-alarm-upd">--:--:--</span></td>
+        </tr>
+        <tr>
+            <td class="col-right">התרעה אחרונה: <span id="val-push-last">טוען...</span></td>
+            <td class="col-sep">|</td>
+            <td class="col-center">התרעות ביממה: <span id="val-push-count">0</span></td>
+            <td class="col-sep">|</td>
+            <td class="col-left">עודכן: <span id="val-push-upd">--:--:--</span></td>
+        </tr>
+    </table>
 
     <div class="separator"></div>
 
@@ -116,16 +130,11 @@
                 var rainTomorrow = data.daily.precipitation_sum[1];
                 var rText = "אין צפי לגשם בימים הקרובים";
                 
-                if (currentCode === 61 || currentCode === 63 || currentCode === 65 || 
-                    currentCode === 80 || currentCode === 81 || currentCode === 82) {
+                if (currentCode === 61 || currentCode === 63 || currentCode === 65 || currentCode === 80 || currentCode === 81 || currentCode === 82) {
                     rText = "גשום כרגע!";
                 } else if (rainToday > 0) {
                     var currentHour = new Date().getHours();
-                    if (currentHour < 18) {
-                        rText = "גשם צפוי בהמשך היום";
-                    } else {
-                        rText = "גשם צפוי הלילה";
-                    }
+                    rText = currentHour < 18 ? "גשם צפוי בהמשך היום" : "גשם צפוי הלילה";
                 } else if (rainTomorrow > 0) {
                     rText = "גשם צפוי מחר";
                 }
@@ -141,19 +150,21 @@
             isFetchingAlerts = true; lockTime = nowTime;
             var targetUrl = "https://script.google.com/macros/s/AKfycbz_2w4SkUX2qxP27pVCX4g-tsZbtttKb5X95TGG4FBRcFihafSjQBDDkYQKfXOPraXQjA/exec";
             var fetchUrl = targetUrl + "?v=" + lockTime;
+            
             fetch(fetchUrl).then(function(response) {
                 if (!response.ok) throw new Error("HTTP Status: " + response.status);
                 return response.text();
             }).then(function(rawText) {
-                isFetchingAlerts = false; var now = new Date(); var diagDiv = document.getElementById("debug-diag");
+                isFetchingAlerts = false; var now = new Date();
                 var alertsData = []; var pushesData = [];
+                
                 if (rawText !== "" && rawText.indexOf("<") !== 0) {
                     try {
                         var parsedData = JSON.parse(rawText);
-                        if (Array.isArray(parsedData)) { alertsData = parsedData; diagDiv.innerHTML = "אבחון: מצב מיושן. עדכן סקריפט גוגל."; }
-                        else { alertsData = parsedData.alerts || []; pushesData = parsedData.pushes || []; diagDiv.innerHTML = "אבחון: פועל. אזהרות: " + alertsData.length + ", צפי: " + pushesData.length; }
-                    } catch(e) { diagDiv.innerHTML = "אבחון: שגיאת פענוח JSON מגוגל."; }
-                } else { diagDiv.innerHTML = "אבחון: תשובה ריקה מגוגל."; }
+                        if (Array.isArray(parsedData)) { alertsData = parsedData; }
+                        else { alertsData = parsedData.alerts || []; pushesData = parsedData.pushes || []; }
+                    } catch(e) {}
+                }
                 lastSuccessTime = now.getTime();
                 
                 var extractTimeObj = function(str) {
@@ -171,7 +182,7 @@
                 var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
                 var timeNowStr = now.toLocaleTimeString("he-IL");
 
-                // --- לוגיקת אזעקות אמת ---
+                // לוגיקת אזעקות
                 var latestAlarmTimeStr = "שקט בחולון", alarmsToday = 0, isAlarmActive = false, alarmAgeMinutes = -1;
                 for (var j = 0; j < alertsData.length; j++) {
                     var rowA = JSON.stringify(alertsData[j] || {});
@@ -191,7 +202,7 @@
                     }
                 }
 
-                // --- לוגיקת התרעות צפי ---
+                // לוגיקת התרעות צפי
                 var latestPushTimeStr = "שקט בחולון", pushesToday = 0, isPushActive = false, pushAgeMinutes = -1;
                 for (var k = 0; k < pushesData.length; k++) {
                     var rowP = JSON.stringify(pushesData[k] || {});
@@ -211,29 +222,36 @@
                     }
                 }
 
-                // --- יישור ועיצוב דינמי של שורות הנתונים ---
-                var padStr = function(str, len) { while (str.length < len) str += " "; return str; };
-                var alarmRowTitle = "אזעקה אחרונה: "; var pushRowTitle = "התרעה אחרונה: ";
-                var maxTitleLen = Math.max(alarmRowTitle.length, pushRowTitle.length);
-                var sep = " | ";
+                // עדכון המסך - כעת פונה לאלמנטים בתוך הטבלה
+                document.getElementById("val-alarm-last").innerHTML = latestAlarmTimeStr;
+                document.getElementById("val-alarm-count").innerHTML = alarmsToday;
+                document.getElementById("val-alarm-upd").innerHTML = timeNowStr;
+                
+                document.getElementById("val-push-last").innerHTML = latestPushTimeStr;
+                document.getElementById("val-push-count").innerHTML = pushesToday;
+                document.getElementById("val-push-upd").innerHTML = timeNowStr;
 
-                document.getElementById("debug-alarms").innerHTML = padStr(alarmRowTitle, maxTitleLen) + latestAlarmTimeStr + sep + "אזעקות ביממה: " + padStr(alarmsToday.toString(), 2) + sep + "עודכן: " + timeNowStr;
-                document.getElementById("debug-pushes").innerHTML = padStr(pushRowTitle, maxTitleLen) + latestPushTimeStr + sep + "התרעות ביממה: " + padStr(pushesToday.toString(), 2) + sep + "עודכן: " + timeNowStr;
-
-                // --- היררכיית מצבים וויזואליים ---
+                // צבעים
                 var statusDiv = document.getElementById("holon-status");
-                if (isAlarmActive) { statusDiv.innerHTML = "אזעקה בחולון!"; if (alarmAgeMinutes <= 2) document.body.className = "emergency"; else document.body.className = "shrapnel-alert"; }
-                else if (isPushActive) { statusDiv.innerHTML = "חולון: צפי לאזעקה"; if (pushAgeMinutes <= 1) document.body.className = "warning-flicker"; else document.body.className = "warning-static"; }
-                else { document.body.className = ""; statusDiv.innerHTML = "חולון: אין התרעות"; }
-            }).catch(function(error) { isFetchingAlerts = false; document.getElementById("debug-diag").innerHTML = "אבחון: שגיאת תקשורת רשת (" + error.message + ")."; });
+                if (isAlarmActive) { 
+                    statusDiv.innerHTML = "אזעקה בחולון!"; 
+                    document.body.className = (alarmAgeMinutes <= 2) ? "emergency" : "shrapnel-alert"; 
+                }
+                else if (isPushActive) { 
+                    statusDiv.innerHTML = "חולון: צפי לאזעקה"; 
+                    document.body.className = (pushAgeMinutes <= 1) ? "warning-flicker" : "warning-static"; 
+                }
+                else { 
+                    document.body.className = ""; 
+                    statusDiv.innerHTML = "חולון: אין התרעות"; 
+                }
+            }).catch(function(error) { isFetchingAlerts = false; });
         }
 
         function checkConnectionHealth() {
-            var now = new Date().getTime(); var diffSeconds = (now - lastSuccessTime) / 1000; var diagDiv = document.getElementById("debug-diag");
-            if (diagDiv) {
-                if (diffSeconds > 35) { diagDiv.style.color = "#ff7700"; diagDiv.innerHTML = "אבחון: אין נתונים מגוגל כ-35 שניות."; }
-                else if (diagDiv.innerHTML.indexOf("פועל") !== -1) { diagDiv.style.color = "#007700"; }
-            }
+            var now = new Date().getTime(); var diffSeconds = (now - lastSuccessTime) / 1000;
+            var table = document.getElementById("debug-table");
+            if (table) { table.style.color = (diffSeconds > 35) ? "#ff7700" : "#007700"; }
         }
 
         function updateCountdown() {
