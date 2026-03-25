@@ -182,40 +182,42 @@
                 var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
                 var timeNowStr = now.toLocaleTimeString("he-IL");
 
-                // לוגיקת אזעקות
-                var latestAlarmTimeStr = "שקט בחולון", alarmsToday = 0, isAlarmActive = false, alarmAgeMinutes = -1;
+                // לוגיקת אזעקות אמת מתוקנת (חישוב כרונולוגי)
+                var latestAlarmTime = 0, latestAlarmTimeStr = "שקט בחולון", alarmsToday = 0, isAlarmActive = false, alarmAgeMinutes = -1;
                 for (var j = 0; j < alertsData.length; j++) {
                     var rowA = JSON.stringify(alertsData[j] || {});
                     if (rowA.indexOf("חולון") !== -1) {
                         var dObjA = extractTimeObj(rowA);
                         if (dObjA) {
-                            if (dObjA.getTime() >= startOfDay) alarmsToday++;
-                            if (dObjA.getTime() > 0) {
+                            var tsA = dObjA.getTime();
+                            if (tsA >= startOfDay) alarmsToday++;
+                            if (tsA > latestAlarmTime) {
+                                latestAlarmTime = tsA;
                                 var hA = dObjA.getHours(), mA = dObjA.getMinutes(), sA = dObjA.getSeconds();
-                                var curAStr = (hA < 10 ? "0"+hA : hA) + ":" + (mA < 10 ? "0"+mA : mA) + ":" + (sA < 10 ? "0"+sA : sA);
-                                if (latestAlarmTimeStr === "שקט בחולון" || curAStr > latestAlarmTimeStr) latestAlarmTimeStr = curAStr;
+                                latestAlarmTimeStr = (hA < 10 ? "0"+hA : hA) + ":" + (mA < 10 ? "0"+mA : mA) + ":" + (sA < 10 ? "0"+sA : sA);
                             }
-                            var diffA = (now.getTime() - dObjA.getTime()) / 60000;
+                            var diffA = (now.getTime() - tsA) / 60000;
                             if (diffA < -1000) diffA += 1440;
                             if (diffA <= 10 && diffA >= 0) { isAlarmActive = true; if (alarmAgeMinutes === -1 || diffA < alarmAgeMinutes) alarmAgeMinutes = diffA; }
                         }
                     }
                 }
 
-                // לוגיקת התרעות צפי
-                var latestPushTimeStr = "שקט בחולון", pushesToday = 0, isPushActive = false, pushAgeMinutes = -1;
+                // לוגיקת התרעות צפי מתוקנת (חישוב כרונולוגי)
+                var latestPushTime = 0, latestPushTimeStr = "שקט בחולון", pushesToday = 0, isPushActive = false, pushAgeMinutes = -1;
                 for (var k = 0; k < pushesData.length; k++) {
                     var rowP = JSON.stringify(pushesData[k] || {});
                     if (rowP.indexOf("חולון") !== -1) {
                         var dObjP = extractTimeObj(rowP);
                         if (dObjP) {
-                            if (dObjP.getTime() >= startOfDay) pushesToday++;
-                            if (dObjP.getTime() > 0) {
+                            var tsP = dObjP.getTime();
+                            if (tsP >= startOfDay) pushesToday++;
+                            if (tsP > latestPushTime) {
+                                latestPushTime = tsP;
                                 var hP = dObjP.getHours(), mP = dObjP.getMinutes(), sP = dObjP.getSeconds();
-                                var curPStr = (hP < 10 ? "0"+hP : hP) + ":" + (mP < 10 ? "0"+mP : mP) + ":" + (sP < 10 ? "0"+sP : sP);
-                                if (latestPushTimeStr === "שקט בחולון" || curPStr > latestPushTimeStr) latestPushTimeStr = curPStr;
+                                latestPushTimeStr = (hP < 10 ? "0"+hP : hP) + ":" + (mP < 10 ? "0"+mP : mP) + ":" + (sP < 10 ? "0"+sP : sP);
                             }
-                            var diffP = (now.getTime() - dObjP.getTime()) / 60000;
+                            var diffP = (now.getTime() - tsP) / 60000;
                             if (diffP < -1000) diffP += 1440;
                             if (diffP <= 10 && diffP >= 0) { isPushActive = true; if (pushAgeMinutes === -1 || diffP < pushAgeMinutes) pushAgeMinutes = diffP; }
                         }
