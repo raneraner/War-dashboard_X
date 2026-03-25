@@ -116,15 +116,15 @@
             var now = new Date();
             var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
             if (h < 10) h = "0" + h; if (m < 10) m = "0" + m; if (s < 10) s = "0" + s;
-            document.getElementById("clock").innerHTML = h + ":" + m + ":" + s;
-            document.getElementById("date").innerHTML = now.toLocaleDateString("he-IL");
+            document.getElementById("clock").textContent = h + ":" + m + ":" + s;
+            document.getElementById("date").textContent = now.toLocaleDateString("he-IL");
         }
 
         function updateWeather() {
             var url = "https://api.open-meteo.com/v1/forecast?latitude=32.01&longitude=34.78&current_weather=true&daily=precipitation_sum&timezone=Asia%2FJerusalem";
             
             fetch(url).then(function(r){return r.json()}).then(function(data){
-                document.getElementById("temp").innerHTML = Math.round(data.current_weather.temperature) + "°C";
+                document.getElementById("temp").textContent = Math.round(data.current_weather.temperature) + "°C";
                 var currentCode = data.current_weather.weathercode;
                 var rainToday = data.daily.precipitation_sum[0];
                 var rainTomorrow = data.daily.precipitation_sum[1];
@@ -138,7 +138,7 @@
                 } else if (rainTomorrow > 0) {
                     rText = "גשם צפוי מחר";
                 }
-                document.getElementById("rain-info").innerHTML = rText;
+                document.getElementById("rain-info").textContent = rText;
             });
         }
 
@@ -222,28 +222,26 @@
                     }
                 }
 
-                // עדכון המסך - כעת פונה לאלמנטים בתוך הטבלה
-                document.getElementById("val-alarm-last").innerHTML = latestAlarmTimeStr;
-                document.getElementById("val-alarm-count").innerHTML = alarmsToday;
-                document.getElementById("val-alarm-upd").innerHTML = timeNowStr;
+                document.getElementById("val-alarm-last").textContent = latestAlarmTimeStr;
+                document.getElementById("val-alarm-count").textContent = alarmsToday;
+                document.getElementById("val-alarm-upd").textContent = timeNowStr;
                 
-                document.getElementById("val-push-last").innerHTML = latestPushTimeStr;
-                document.getElementById("val-push-count").innerHTML = pushesToday;
-                document.getElementById("val-push-upd").innerHTML = timeNowStr;
+                document.getElementById("val-push-last").textContent = latestPushTimeStr;
+                document.getElementById("val-push-count").textContent = pushesToday;
+                document.getElementById("val-push-upd").textContent = timeNowStr;
 
-                // צבעים
                 var statusDiv = document.getElementById("holon-status");
                 if (isAlarmActive) { 
-                    statusDiv.innerHTML = "אזעקה בחולון!"; 
+                    statusDiv.textContent = "אזעקה בחולון!"; 
                     document.body.className = (alarmAgeMinutes <= 2) ? "emergency" : "shrapnel-alert"; 
                 }
                 else if (isPushActive) { 
-                    statusDiv.innerHTML = "חולון: צפי לאזעקה"; 
+                    statusDiv.textContent = "חולון: צפי לאזעקה"; 
                     document.body.className = (pushAgeMinutes <= 1) ? "warning-flicker" : "warning-static"; 
                 }
                 else { 
                     document.body.className = ""; 
-                    statusDiv.innerHTML = "חולון: אין התרעות"; 
+                    statusDiv.textContent = "חולון: אין התרעות"; 
                 }
             }).catch(function(error) { isFetchingAlerts = false; });
         }
@@ -256,9 +254,9 @@
 
         function updateCountdown() {
             var target = new Date(2026, 3, 1, 0, 0, 0); var diff = target - new Date();
-            if (diff <= 0) { document.getElementById("timer").innerHTML = "מזל טוב!"; return; }
+            if (diff <= 0) { document.getElementById("timer").textContent = "מזל טוב!"; return; }
             var d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
-            document.getElementById("timer").innerHTML = d + " ימים " + h + " שעות " + m + " דקות " + s + " שניות ";
+            document.getElementById("timer").textContent = d + " ימים " + h + " שעות " + m + " דקות " + s + " שניות ";
         }
 
         setInterval(updateClock, 1000); setInterval(updateCountdown, 1000); setInterval(checkHolonAlert, 15000); setInterval(checkConnectionHealth, 2000); setInterval(updateWeather, 900000);
