@@ -54,7 +54,6 @@
         #temp { font-size: 55px; font-weight: bold; margin-bottom: 7px; }
         #rain-info { font-size: 26px; }
 
-        /* הקופסה שעוטפת את התיבה והבר יחד */
         #status-wrapper {
             display: inline-block;
             margin-top: 5px;
@@ -77,14 +76,15 @@
         #debug-table { width: 96%; margin: 15px auto 0 auto; font-size: 18px; border-collapse: collapse; direction: rtl; }
         #debug-table td { padding: 4px; transition: color 0.3s; white-space: nowrap; }
         
-        /* צבעים ספציפיים לשורות הנתונים */
         #row-alarms { color: #ff4444; }
         #row-pushes { color: #ffaa00; }
+        
         .col-sep { text-align: center; width: 2%; color: #004400 !important; }
-
-        .col-right { text-align: right; width: 33%; }
-        .col-center { text-align: center; width: 34%; }
-        .col-left { text-align: left; width: 33%; }
+        .col-right { text-align: right; width: 35%; }
+        .col-center { text-align: center; width: 35%; }
+        .col-left { text-align: left; width: 26%; vertical-align: middle; }
+        
+        #update-cell { color: #00FF00; }
 
         #timer { font-size: 30px; font-weight: bold; white-space: nowrap; color: #00FF00; }
     </style>
@@ -114,15 +114,13 @@
             <td class="col-right">אזעקה אחרונה: <span id="val-alarm-last">טוען...</span></td>
             <td class="col-sep">|</td>
             <td class="col-center">אזעקות ביממה: <span id="val-alarm-count">0</span></td>
-            <td class="col-sep">|</td>
-            <td class="col-left">עודכן: <span id="val-alarm-upd">--:--:--</span></td>
+            <td class="col-sep" rowspan="2">|</td>
+            <td class="col-left" rowspan="2" id="update-cell">עודכן: <span id="val-sys-upd">--:--:--</span></td>
         </tr>
         <tr id="row-pushes">
             <td class="col-right">התרעה אחרונה: <span id="val-push-last">טוען...</span></td>
             <td class="col-sep">|</td>
             <td class="col-center">התרעות ביממה: <span id="val-push-count">0</span></td>
-            <td class="col-sep">|</td>
-            <td class="col-left">עודכן: <span id="val-push-upd">--:--:--</span></td>
         </tr>
     </table>
 
@@ -299,11 +297,11 @@
 
                 document.getElementById("val-alarm-last").innerHTML = latestAlarmTimeStr;
                 document.getElementById("val-alarm-count").innerHTML = alarmsToday;
-                document.getElementById("val-alarm-upd").innerHTML = timeNowStr;
+                
+                document.getElementById("val-sys-upd").innerHTML = timeNowStr;
                 
                 document.getElementById("val-push-last").innerHTML = latestPushTimeStr;
                 document.getElementById("val-push-count").innerHTML = pushesToday;
-                document.getElementById("val-push-upd").innerHTML = timeNowStr;
 
                 var statusDiv = document.getElementById("holon-status");
                 if (isAlarmActive) { 
@@ -322,11 +320,11 @@
         }
 
         function checkConnectionHealth() {
-            var now = new Date().getTime(); var diffSeconds = (now - lastSuccessTime) / 1000;
-            var table = document.getElementById("debug-table");
-            if (table) { 
-                // אין לשנות צבע כללי במקרה של שגיאה כדי לא לדרוס את האדום/כתום. 
-                // נוסיף רק אינדיקציה במקרה של ניתוק ארוך לשורת הכותרת.
+            var now = new Date().getTime(); 
+            var diffSeconds = (now - lastSuccessTime) / 1000;
+            var updCell = document.getElementById("update-cell");
+            if (updCell) {
+                updCell.style.color = (diffSeconds > 35) ? "#ff7700" : "#00FF00";
             }
         }
 
