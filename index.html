@@ -21,61 +21,52 @@
 
         body { 
             background-color: black; color: #00FF00; font-family: monospace; 
-            text-align: center; padding-top: 2%; overflow: hidden; direction: rtl;
+            text-align: center; padding-top: 3%; overflow: hidden; direction: rtl;
             -webkit-animation: flicker 0.15s infinite;
         }
 
         body.emergency { -webkit-animation: redAlert 0.4s infinite !important; }
         body.emergency #holon-status { 
             border-color: #ffffff; color: #ffffff; background-color: #ff0000;
-            font-weight: bold; font-size: 40px;
+            font-weight: bold; font-size: 45px;
         }
         body.shrapnel-alert #holon-status { 
             border-color: #ffffff; color: #ffffff; background-color: #ff0000;
-            font-weight: bold; font-size: 40px;
+            font-weight: bold; font-size: 45px;
         }
 
         body.warning-flicker { -webkit-animation: orangeAlert 0.6s infinite !important; }
         body.warning-flicker #holon-status { 
             border-color: #ffffff; color: #ffffff; background-color: #ff7700;
-            font-weight: bold; font-size: 40px;
+            font-weight: bold; font-size: 45px;
         }
         body.warning-static #holon-status { 
             border-color: #ffffff; color: #ffffff; background-color: #ff7700;
-            font-weight: bold; font-size: 40px;
+            font-weight: bold; font-size: 45px;
         }
 
-        .separator { border-top: 2px dashed #004400; margin: 15px auto; width: 90%; }
-        .section-title { font-size: 24px; color: #005500; margin-bottom: 8px; }
+        .separator { border-top: 2px dashed #004400; margin: 25px auto; width: 90%; }
+        .section-title { font-size: 26px; color: #005500; margin-bottom: 12px; }
 
-        #clock { font-size: 85px; margin-bottom: 0; }
-        #date { font-size: 30px; color: #008800; margin-top: 5px; }
+        #clock { font-size: 90px; margin-bottom: 0; }
+        #date { font-size: 32px; color: #008800; margin-top: 5px; }
 
-        #temp { font-size: 55px; font-weight: bold; margin-bottom: 7px; }
-        #rain-info { font-size: 26px; }
+        #temp { font-size: 60px; font-weight: bold; margin-bottom: 7px; }
+        #rain-info { font-size: 28px; }
 
         #holon-status { 
-            font-size: 36px; border: 3px solid #00FF00; display: inline-block; 
-            padding: 10px 25px; margin-top: 5px; color: #00FF00;
+            font-size: 40px; border: 3px solid #00FF00; display: inline-block; 
+            padding: 12px 30px; margin-top: 5px; color: #00FF00;
         }
 
-        /* עיצוב בר 10 הדקות */
-        #progress-container { 
-            width: 80%; height: 22px; border: 2px solid #004400; 
-            margin: 10px auto 0 auto; display: none; background: black; 
-        }
-        #progress-bar { 
-            width: 0%; height: 100%; transition: width 1s linear, background-color 1s; 
-        }
-
-        #debug-table { width: 96%; margin: 15px auto 0 auto; font-size: 18px; color: #007700; border-collapse: collapse; direction: rtl; }
-        #debug-table td { padding: 4px; transition: color 0.3s; white-space: nowrap; }
+        #debug-table { width: 90%; margin: 15px auto 0 auto; font-size: 18px; color: #007700; border-collapse: collapse; direction: rtl; }
+        #debug-table td { padding: 4px; transition: color 0.3s; }
         .col-right { text-align: right; width: 33%; }
         .col-center { text-align: center; width: 34%; }
         .col-left { text-align: left; width: 33%; }
         .col-sep { text-align: center; width: 2%; color: #004400; }
 
-        #timer { font-size: 30px; font-weight: bold; white-space: nowrap; }
+        #timer { font-size: 34px; font-weight: bold; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -93,7 +84,6 @@
 
     <div class="section-title">מלחמה:</div>
     <div id="holon-status">חולון: אין התרעות</div>
-    <div id="progress-container"><div id="progress-bar"></div></div>
     
     <table id="debug-table">
         <tr>
@@ -121,24 +111,20 @@
         var lastSuccessTime = new Date().getTime();
         var isFetchingAlerts = false; 
         var lockTime = 0; 
-        
-        // משתנים גלובליים לניהול הבר
-        window.globalIsAlarmActive = false;
-        window.globalLatestPushTimestamp = 0;
 
         function updateClock() {
             var now = new Date();
             var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
             if (h < 10) h = "0" + h; if (m < 10) m = "0" + m; if (s < 10) s = "0" + s;
-            document.getElementById("clock").textContent = h + ":" + m + ":" + s;
-            document.getElementById("date").textContent = now.toLocaleDateString("he-IL");
+            document.getElementById("clock").innerHTML = h + ":" + m + ":" + s;
+            document.getElementById("date").innerHTML = now.toLocaleDateString("he-IL");
         }
 
         function updateWeather() {
             var url = "https://api.open-meteo.com/v1/forecast?latitude=32.01&longitude=34.78&current_weather=true&daily=precipitation_sum&timezone=Asia%2FJerusalem";
             
             fetch(url).then(function(r){return r.json()}).then(function(data){
-                document.getElementById("temp").textContent = Math.round(data.current_weather.temperature) + "°C";
+                document.getElementById("temp").innerHTML = Math.round(data.current_weather.temperature) + "°C";
                 var currentCode = data.current_weather.weathercode;
                 var rainToday = data.daily.precipitation_sum[0];
                 var rainTomorrow = data.daily.precipitation_sum[1];
@@ -152,44 +138,8 @@
                 } else if (rainTomorrow > 0) {
                     rText = "גשם צפוי מחר";
                 }
-                document.getElementById("rain-info").textContent = rText;
+                document.getElementById("rain-info").innerHTML = rText;
             });
-        }
-
-        function updateProgressBar() {
-            var pContainer = document.getElementById("progress-container");
-            var pBar = document.getElementById("progress-bar");
-            
-            if (window.globalIsAlarmActive) {
-                pContainer.style.display = "none";
-                return;
-            }
-            
-            if (window.globalLatestPushTimestamp > 0) {
-                var now = new Date().getTime();
-                var diffSecs = Math.floor((now - window.globalLatestPushTimestamp) / 1000);
-                
-                if (diffSecs >= 0 && diffSecs <= 600) { // עד 10 דקות
-                    pContainer.style.display = "block";
-                    pContainer.style.borderColor = "#005500";
-                    var pct = (diffSecs / 600) * 100;
-                    pBar.style.width = pct + "%";
-                    
-                    if (diffSecs <= 240) { // 0-4 דקות
-                        pBar.style.backgroundColor = "#00FF00";
-                    } else if (diffSecs <= 360) { // 4-6 דקות
-                        pBar.style.backgroundColor = "#ff7700";
-                    } else if (diffSecs <= 540) { // 6-9 דקות
-                        pBar.style.backgroundColor = "#ff0000";
-                    } else { // 9-10 דקות
-                        pBar.style.backgroundColor = "#00FF00";
-                    }
-                } else {
-                    pContainer.style.display = "none";
-                }
-            } else {
-                pContainer.style.display = "none";
-            }
         }
 
         function checkHolonAlert() {
@@ -218,6 +168,13 @@
                 lastSuccessTime = now.getTime();
                 
                 var extractTimeObj = function(str) {
+                    // התיקון: חילוץ כרונולוגי מפורש למניעת קפיצת אזורי זמן (UTC vs Local)
+                    var isoMatch = str.match(/"time"\s*:\s*"([^"]+)"/);
+                    if (isoMatch) {
+                        var isoStr = isoMatch[1];
+                        var d = new Date(isoStr);
+                        if (!isNaN(d.getTime())) return d;
+                    }
                     var fMatch = str.match(/(\d{4}-\d{2}-\d{2})[T\s]([0-2]\d:[0-5]\d:[0-5]\d)/);
                     if (fMatch) { 
                         var dp = fMatch[1].split("-"), tp = fMatch[2].split(":"); 
@@ -227,14 +184,13 @@
                     if (nMatch) { var ts = parseInt(nMatch[1]); return new Date(ts > 9999999999 ? ts : ts * 1000); }
                     var tMatch = str.match(/([0-2]\d):([0-5]\d):([0-5]\d)/);
                     if (tMatch) { var d2 = new Date(); d2.setHours(parseInt(tMatch[1]), parseInt(tMatch[2]), parseInt(tMatch[3]), 0); return d2; }
-                    var isoMatch = str.match(/"time"\s*:\s*"([^"]+)"/);
-                    if (isoMatch && isoMatch[1].indexOf('T') !== -1) { var d = new Date(isoMatch[1]); if (!isNaN(d.getTime())) return d; }
                     return null;
                 };
 
                 var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
                 var timeNowStr = now.toLocaleTimeString("he-IL");
 
+                // לוגיקת אזעקות אמת מתוקנת (חישוב כרונולוגי)
                 var latestAlarmTime = 0, latestAlarmTimeStr = "שקט בחולון", alarmsToday = 0, isAlarmActive = false, alarmAgeMinutes = -1;
                 for (var j = 0; j < alertsData.length; j++) {
                     var rowA = JSON.stringify(alertsData[j] || {});
@@ -255,6 +211,7 @@
                     }
                 }
 
+                // לוגיקת התרעות צפי מתוקנת (חישוב כרונולוגי)
                 var latestPushTime = 0, latestPushTimeStr = "שקט בחולון", pushesToday = 0, isPushActive = false, pushAgeMinutes = -1;
                 for (var k = 0; k < pushesData.length; k++) {
                     var rowP = JSON.stringify(pushesData[k] || {});
@@ -274,30 +231,27 @@
                         }
                     }
                 }
-                
-                window.globalIsAlarmActive = isAlarmActive;
-                window.globalLatestPushTimestamp = latestPushTime;
 
-                document.getElementById("val-alarm-last").textContent = latestAlarmTimeStr;
-                document.getElementById("val-alarm-count").textContent = alarmsToday;
-                document.getElementById("val-alarm-upd").textContent = timeNowStr;
+                document.getElementById("val-alarm-last").innerHTML = latestAlarmTimeStr;
+                document.getElementById("val-alarm-count").innerHTML = alarmsToday;
+                document.getElementById("val-alarm-upd").innerHTML = timeNowStr;
                 
-                document.getElementById("val-push-last").textContent = latestPushTimeStr;
-                document.getElementById("val-push-count").textContent = pushesToday;
-                document.getElementById("val-push-upd").textContent = timeNowStr;
+                document.getElementById("val-push-last").innerHTML = latestPushTimeStr;
+                document.getElementById("val-push-count").innerHTML = pushesToday;
+                document.getElementById("val-push-upd").innerHTML = timeNowStr;
 
                 var statusDiv = document.getElementById("holon-status");
                 if (isAlarmActive) { 
-                    statusDiv.textContent = "אזעקה בחולון!"; 
+                    statusDiv.innerHTML = "אזעקה בחולון!"; 
                     document.body.className = (alarmAgeMinutes <= 2) ? "emergency" : "shrapnel-alert"; 
                 }
                 else if (isPushActive) { 
-                    statusDiv.textContent = "חולון: צפי לאזעקה"; 
+                    statusDiv.innerHTML = "חולון: צפי לאזעקה"; 
                     document.body.className = (pushAgeMinutes <= 1) ? "warning-flicker" : "warning-static"; 
                 }
                 else { 
                     document.body.className = ""; 
-                    statusDiv.textContent = "חולון: אין התרעות"; 
+                    statusDiv.innerHTML = "חולון: אין התרעות"; 
                 }
             }).catch(function(error) { isFetchingAlerts = false; });
         }
@@ -310,12 +264,12 @@
 
         function updateCountdown() {
             var target = new Date(2026, 3, 1, 0, 0, 0); var diff = target - new Date();
-            if (diff <= 0) { document.getElementById("timer").textContent = "מזל טוב!"; return; }
+            if (diff <= 0) { document.getElementById("timer").innerHTML = "מזל טוב!"; return; }
             var d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
-            document.getElementById("timer").textContent = d + " ימים " + h + " שעות " + m + " דקות " + s + " שניות ";
+            document.getElementById("timer").innerHTML = d + " ימים " + h + " שעות " + m + " דקות " + s + " שניות ";
         }
 
-        setInterval(updateClock, 1000); setInterval(updateProgressBar, 1000); setInterval(updateCountdown, 1000); setInterval(checkHolonAlert, 15000); setInterval(checkConnectionHealth, 2000); setInterval(updateWeather, 900000);
+        setInterval(updateClock, 1000); setInterval(updateCountdown, 1000); setInterval(checkHolonAlert, 15000); setInterval(checkConnectionHealth, 2000); setInterval(updateWeather, 900000);
         updateClock(); updateCountdown(); updateWeather(); checkHolonAlert();
     </script>
 </body>
