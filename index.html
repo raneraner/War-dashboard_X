@@ -276,7 +276,7 @@
                     var diffHoursA = Math.floor((now.getTime() - latestAlarmTime) / 3600000);
                     if (diffHoursA >= 24) {
                         var daysA = Math.floor(diffHoursA / 24) * 24;
-                        latestAlarmTimeStr += " (+" + daysA + " ש״)";
+                        latestAlarmTimeStr += " (+" + daysA + "ש)";
                     }
                 }
 
@@ -304,7 +304,7 @@
                     var diffHoursP = Math.floor((now.getTime() - latestPushTime) / 3600000);
                     if (diffHoursP >= 24) {
                         var daysP = Math.floor(diffHoursP / 24) * 24;
-                        latestPushTimeStr += " (+" + daysP + " ש״)";
+                        latestPushTimeStr += " (+" + daysP + "ש)";
                     }
                 }
 
