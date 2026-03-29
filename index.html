@@ -272,6 +272,14 @@
                     }
                 }
 
+                if (latestAlarmTime > 0) {
+                    var diffHoursA = Math.floor((now.getTime() - latestAlarmTime) / 3600000);
+                    if (diffHoursA >= 24) {
+                        var daysA = Math.floor(diffHoursA / 24) * 24;
+                        latestAlarmTimeStr += " (+" + daysA + " ש״)";
+                    }
+                }
+
                 var latestPushTime = 0, latestPushTimeStr = "שקט בחולון", pushesToday = 0, isPushActive = false, pushAgeMinutes = -1;
                 for (var k = 0; k < pushesData.length; k++) {
                     var rowP = JSON.stringify(pushesData[k] || {});
@@ -289,6 +297,14 @@
                             if (diffP < -1000) diffP += 1440;
                             if (diffP <= 10 && diffP >= 0) { isPushActive = true; if (pushAgeMinutes === -1 || diffP < pushAgeMinutes) pushAgeMinutes = diffP; }
                         }
+                    }
+                }
+
+                if (latestPushTime > 0) {
+                    var diffHoursP = Math.floor((now.getTime() - latestPushTime) / 3600000);
+                    if (diffHoursP >= 24) {
+                        var daysP = Math.floor(diffHoursP / 24) * 24;
+                        latestPushTimeStr += " (+" + daysP + " ש״)";
                     }
                 }
 
